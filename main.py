@@ -15,11 +15,11 @@ class ProcessData:
 
 
     def cov_matrix(self):
-        # data = np.loadtxt("dengue_features_train.csv", delimiter=',', skiprows=1, usecols=range(4, 23))
+        #read data from file
         feature_train = pd.read_csv('dengue_features_train.csv')
+        #remove all empty rows
         rmv_nan_ft = feature_train.dropna()
 
-        #cov_matrix = np.cov(rmv_nan_ft.transpose(),bias=True)
         keep_col = ["ndvi_ne","ndvi_nw","ndvi_se","ndvi_sw","precipitation_amt_mm","reanalysis_air_temp_k",
                     "reanalysis_avg_temp_k","reanalysis_dew_point_temp_k","reanalysis_max_air_temp_k",
                     "reanalysis_min_air_temp_k","reanalysis_precip_amt_kg_per_m2",
@@ -27,7 +27,8 @@ class ProcessData:
                     "reanalysis_specific_humidity_g_per_kg","reanalysis_tdtr_k","station_avg_temp_c",
                     "station_diur_temp_rng_c","station_max_temp_c","station_min_temp_c","station_precip_mm"]
         rmved_dateCol = rmv_nan_ft[keep_col]
-        #why if its tranpose its 20x20
+        
+        #create a cov matrix 
         cov_matrix = np.cov(rmved_dateCol.transpose())
         X = np.array(cov_matrix)
 
@@ -36,12 +37,10 @@ class ProcessData:
         scaler.fit(rmved_dateCol)
         # fit and transform the data
         scaled_data = scaler.transform(rmved_dateCol)
-        #print(scaled_data)
-
-
+        
+        #reduce number of variables
         pca = PCA(n_components=3)
         principleComp = pca.fit_transform(scaled_data)
-        #principleDf = pd.DataFrame(data=principleComp,columns=['principle component 1','principle component 2'])
 
 
         return pca.transform(scaled_data)
@@ -49,7 +48,7 @@ class ProcessData:
 
     def processTest(self,model):
         feature_test = pd.read_csv('dengue_features_test.csv')
-
+        #make a copy of test csv
         copy_test = pd.read_csv('dengue_features_test.csv')
         keep_col = ["ndvi_ne", "ndvi_nw", "ndvi_se", "ndvi_sw", "precipitation_amt_mm", "reanalysis_air_temp_k",
                     "reanalysis_avg_temp_k", "reanalysis_dew_point_temp_k", "reanalysis_max_air_temp_k",
@@ -58,6 +57,7 @@ class ProcessData:
                     "reanalysis_specific_humidity_g_per_kg", "reanalysis_tdtr_k", "station_avg_temp_c",
                     "station_diur_temp_rng_c", "station_max_temp_c", "station_min_temp_c", "station_precip_mm"]
 
+      
         copy_test = copy_test[keep_col]
         copy_test.to_csv('change-dengue_features_test.csv', index=False)
         copied_mean = pd.read_csv('change-dengue_features_test.csv').dropna()
@@ -65,7 +65,8 @@ class ProcessData:
         copied_test = csv.reader(open('change-dengue_features_test.csv'))
 
         lines = list(copied_test)
-
+        
+        #for empty cells used a computed avg value
         for i in range(len(lines)):
             if i == 0:
                 continue
@@ -82,14 +83,13 @@ class ProcessData:
         # fit and transform the data
 
         scaled_data = scaler.transform(featrue_test_filled)
-        #print(scaled_data)
 
-
+        #reduce the variables to match model 
         pca = PCA(n_components=3)
         principleComp = pca.fit_transform(scaled_data)
-        #principleDf = pd.DataFrame(data=principleComp,columns=['principle component 1','principle component 2'])
 
         sub_arr=[]
+        #predict results from model
         for i in range(len(principleComp)):
             sub_arr.append(int(model.predict([principleComp[i]])[0]))
 
@@ -101,7 +101,7 @@ class ProcessData:
             sub_data[i][3] = sub_arr[i-1]
         pd.DataFrame(sub_data).to_csv('SUBMISSION.csv', index=None,header=None)
 
-
+    #find incomplete rows and remove them
     def find_incomplete_rows(self):
         empty_cells_map = {}
 
@@ -127,14 +127,7 @@ class ProcessData:
                          skiprows=array)
         label = label["total_cases"]
         return label
-    def pca(self):
-        data = pd.read_csv('dengue_features_train.csv.txt')
-        scaled_data = preprocessing.scale(data.T)
-        pca = PCA()  # create a PCA object
-        pca.fit(scaled_data)  # do the math
-        pca_data = pca.transform(scaled_data)  # get PCA coordinates for scaled_data
-
-
+    #create model
     def model(self,features,label):
 
         arrayFeature = np.array(features)
@@ -150,9 +143,10 @@ class ProcessData:
 
 
 if __name__ == '__main__':
-    a = ProcessData
-    #mapEmpty = a.find_incomplete_rows(a)
-    pcaFeature = a.cov_matrix(a)
-    label = a.find_incomplete_rows(a)
-    model = a.model(a,pcaFeature,label)
-    a.processTest(a,model)
+    #train model with given data
+    data = ProcessData
+    pcaFeature = data.cov_matrix(data)
+    label = data.find_incomplete_rows(data)
+    model = data.model(data,pcaFeature,label)
+    #predict test results using model
+    data.processTest(data,model)
